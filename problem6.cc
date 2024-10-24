@@ -34,6 +34,10 @@ struct TimeQueue {
   }
 };
 
+std::vector<std::pair<const Program *, int>>
+solveInternal(int delay, int remaining_time, int cur_solver,
+              TimeQueue queues[3], std::set<int> visited);
+
 int score(const std::vector<std::pair<const Program *, int>> &solution,
           int delay) {
   if (solution.empty()) {
@@ -60,45 +64,70 @@ int score(const std::vector<std::pair<const Program *, int>> &solution,
 }
 
 std::vector<std::pair<const Program *, int>>
-solveInternal(int delay, int remaining_time, int cur_solver,
-              TimeQueue queues[3], std::set<int> &visited) {
-  std::cerr << "Recurse! " << cur_solver
-            << " Remaining time: " << remaining_time << std::endl;
-  int solver = 0;
-  int min_time = INT_MAX;
-  const Program *first = nullptr;
-  for (int i = 0; i < 2; i++) {
-    const Program *front = *(queues[i].cur);
-    if (visited.find(front->index) != visited.end()) {
-      front = *(queues[i].next(visited));
-    }
-
-    int time = front->scores[i];
-    if (i != cur_solver) {
-      time += delay;
-    }
-    if (time < min_time) {
-      min_time = time;
-      solver = i;
-      first = front;
-    }
+solveI(int delay, int remaining_time, int i, int cur_solver,
+       TimeQueue queues[3], std::set<int> visited) {
+  const Program *front = *(queues[i].cur);
+  if (visited.find(front->index) != visited.end()) {
+    front = *(queues[i].next(visited));
   }
-  if (remaining_time - min_time < 0) {
+
+  int time = front->scores[i];
+  if (i != cur_solver) {
+    time += delay;
+  }
+
+  if (remaining_time - time < 0) {
     return {};
   }
-  visited.insert(first->index);
-  auto iter = queues[solver].next(visited);
 
-  std::vector<std::pair<const Program *, int>> partial_result = {
-      {first, solver}};
-  if (iter == queues[solver].end) {
+  visited.insert(front->index);
+  auto iter = queues[i].next(visited);
+
+  std::vector<std::pair<const Program *, int>> partial_result;
+  partial_result.push_back({front, i});
+  if (iter == queues[i].end) {
     return partial_result;
   }
 
   auto solution =
-      solveInternal(delay, remaining_time - min_time, solver, queues, visited);
+      solveInternal(delay, remaining_time - time, i, queues, visited);
   partial_result.insert(partial_result.end(), solution.begin(), solution.end());
   return partial_result;
+}
+
+std::vector<std::pair<const Program *, int>>
+bestPartial(std::vector<std::pair<const Program *, int>> results[3], int delay) {
+  int min_score = INT_MAX;
+  int most_problems = 0;
+  int best = 0;
+  for (int i = 0; i < 3; i++) {
+    if (results[i].size() >= most_problems) {
+      if (results[i].size() > most_problems) {
+        most_problems = results[i].size();
+        min_score = INT_MAX;
+      }
+      int val = score(results[i], delay);
+      if (val <= min_score) {
+        min_score = val;
+        best = i;
+      }
+    }
+  }
+  return results[best];
+}
+
+std::vector<std::pair<const Program *, int>>
+solveInternal(int delay, int remaining_time, int cur_solver,
+              TimeQueue queues[3], std::set<int> visited) {
+  std::cerr << "Recurse! " << cur_solver
+            << " Remaining time: " << remaining_time << std::endl;
+  std::vector<std::pair<const Program *, int>> partial_result[3];
+  for (int i = 0; i < 2; i++) {
+    partial_result[i] =
+        solveI(delay, remaining_time, i, cur_solver, queues, visited);
+  }
+
+  return bestPartial(partial_result, delay);
 }
 
 std::vector<const Program *>
