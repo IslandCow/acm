@@ -23,6 +23,7 @@ struct TimeQueue {
 
   std::vector<const Program *>::iterator next(const std::set<int> &solved) {
     while (cur != end) {
+      std::cerr << "Advance queue to remove: " << (*cur)->index << std::endl;
       cur++;
       if (cur == end) {
 	      break;
@@ -69,21 +70,24 @@ int score(const std::vector<std::pair<const Program *, int>> &solution,
 std::vector<std::pair<const Program *, int>>
 solveI(int delay, int remaining_time, int i, int cur_solver,
        TimeQueue queues[3], std::set<int> visited) {
+  std::cerr << "Checking for user " << i << std::endl;
   auto cur = queues[i].cur;
   if (cur == queues[i].end) {
+    std::cerr << "Out of problems EARLY" << std::endl;
     return {};
   }
 
   const Program *front = *(cur);
-  std::cerr << "Processing program: " << front->index << " for user " << i
-            << std::endl;
   if (visited.find(front->index) != visited.end()) {
     cur = queues[i].next(visited);
     if (cur == queues[i].end) {
+      std::cerr << "Out of problems" << std::endl;
       return {};
     }
     front = *(cur);
   }
+  std::cerr << "Processing program: " << front->index << " for user " << i
+    << std::endl;
 
   int time = front->scores[i];
   if (i != cur_solver) {
@@ -92,6 +96,8 @@ solveI(int delay, int remaining_time, int i, int cur_solver,
   std::cerr << "Time for problem " << time << std::endl;
 
   if (remaining_time - time < 0) {
+    std::cerr << "Cannot be solved in time" << std::endl;
+    std::cerr << "Time: " << time << " Remaining: " << remaining_time << std::endl;
     return {};
   }
 
@@ -137,16 +143,25 @@ bestPartial(int cur_solver, std::vector<std::pair<const Program *, int>> results
   return results[best];
 }
 
+int iteration = 0;
+
 std::vector<std::pair<const Program *, int>>
 solveInternal(int delay, int remaining_time, int cur_solver,
               TimeQueue queues[3], std::set<int> visited) {
+  iteration++;
+  int level = iteration;
   std::cerr << "Recurse! " << cur_solver
             << " Remaining time: " << remaining_time << std::endl;
+  std::cerr << "Visited: [";
+  for (auto a : visited) {
+    std::cerr << a << " ";
+  }
+  std::cerr << "]" << std::endl;
   std::vector<std::pair<const Program *, int>> partial_result[3];
   for (int i = 0; i <= 2; i++) {
+    std::cerr << "Iteration: " << level << " Solving for user " << i << std::endl;
     partial_result[i] =
         solveI(delay, remaining_time, i, cur_solver, queues, visited);
-    std::cerr << "Solved for user " << i << std::endl;
   }
 
   return bestPartial(cur_solver, partial_result, delay);
@@ -192,6 +207,11 @@ Result solve(int delay, int total_time,
     TimeQueue ptr_queues[3] = {queues[0], queues[1], queues[2]};
     auto partial = solveInternal(delay, remaining_time, i, ptr_queues, visited);
     answers[i].insert(answers[i].end(), partial.begin(), partial.end());
+    std::cerr << "Programs solved: [";
+    for (auto a : visited) {
+      std::cerr << a << " ";
+    }
+    std::cerr << "]" << std::endl;
   }
 
   int most_problems = 0;
