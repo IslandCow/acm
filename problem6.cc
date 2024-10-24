@@ -62,6 +62,8 @@ int score(const std::vector<std::pair<const Program *, int>> &solution,
 std::vector<std::pair<const Program *, int>>
 solveInternal(int delay, int remaining_time, int cur_solver,
               TimeQueue *queues[3], std::set<int> &visited) {
+  std::cerr << "Recurse! " << cur_solver
+            << " Remaining time: " << remaining_time << std::endl;
   int solver = 0;
   int min_time = INT_MAX;
   const Program *first = nullptr;
@@ -82,7 +84,7 @@ solveInternal(int delay, int remaining_time, int cur_solver,
 
   std::vector<std::pair<const Program *, int>> partial_result = {
       {first, solver}};
-  if (iter == queues[solver]->end) {
+  if (iter == queues[solver]->end || (remaining_time - min_time) <= 0) {
     return partial_result;
   }
 
@@ -104,12 +106,14 @@ sortForUser(int user, const std::vector<const Program *> &programs) {
 
 Result solve(int delay, int total_time,
              const std::vector<const Program *> &programs) {
+  std::cerr << "Begin solve";
   std::vector<const Program *> sorted_times[3] = {sortForUser(0, programs),
                                                   sortForUser(1, programs),
                                                   sortForUser(2, programs)};
 
   std::vector<std::pair<const Program *, int>> answers[3];
   for (int i = 0; i <= 2; i++) {
+    std::cerr << "Start with user " << i << std::endl;
     TimeQueue queues[3] = {{.begin = sorted_times[0].begin(),
                             .end = sorted_times[0].end(),
                             .cur = sorted_times[0].begin()},
