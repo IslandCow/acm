@@ -24,6 +24,9 @@ struct TimeQueue {
   std::vector<const Program *>::iterator next(const std::set<int> &solved) {
     while (cur != end) {
       cur++;
+      if (cur == end) {
+	      break;
+      }
       auto iter = solved.find((*cur)->index);
       if (iter == solved.end()) {
         break;
@@ -66,15 +69,27 @@ int score(const std::vector<std::pair<const Program *, int>> &solution,
 std::vector<std::pair<const Program *, int>>
 solveI(int delay, int remaining_time, int i, int cur_solver,
        TimeQueue queues[3], std::set<int> visited) {
-  const Program *front = *(queues[i].cur);
+  auto cur = queues[i].cur;
+  if (cur == queues[i].end) {
+    return {};
+  }
+
+  const Program *front = *(cur);
+  std::cerr << "Processing program: " << front->index << " for user " << i
+            << std::endl;
   if (visited.find(front->index) != visited.end()) {
-    front = *(queues[i].next(visited));
+    cur = queues[i].next(visited);
+    if (cur == queues[i].end) {
+      return {};
+    }
+    front = *(cur);
   }
 
   int time = front->scores[i];
   if (i != cur_solver) {
     time += delay;
   }
+  std::cerr << "Time for problem " << time << std::endl;
 
   if (remaining_time - time < 0) {
     return {};
@@ -89,6 +104,8 @@ solveI(int delay, int remaining_time, int i, int cur_solver,
     return partial_result;
   }
 
+  std::cerr << "Solve internal again" << std::endl;
+
   auto solution =
       solveInternal(delay, remaining_time - time, i, queues, visited);
   partial_result.insert(partial_result.end(), solution.begin(), solution.end());
@@ -96,7 +113,8 @@ solveI(int delay, int remaining_time, int i, int cur_solver,
 }
 
 std::vector<std::pair<const Program *, int>>
-bestPartial(std::vector<std::pair<const Program *, int>> results[3], int delay) {
+bestPartial(int cur_solver, std::vector<std::pair<const Program *, int>> results[3],
+            int delay) {
   int min_score = INT_MAX;
   int most_problems = 0;
   int best = 0;
@@ -107,6 +125,9 @@ bestPartial(std::vector<std::pair<const Program *, int>> results[3], int delay) 
         min_score = INT_MAX;
       }
       int val = score(results[i], delay);
+      if (i != cur_solver) {
+        val += delay;
+      }
       if (val <= min_score) {
         min_score = val;
         best = i;
@@ -122,12 +143,13 @@ solveInternal(int delay, int remaining_time, int cur_solver,
   std::cerr << "Recurse! " << cur_solver
             << " Remaining time: " << remaining_time << std::endl;
   std::vector<std::pair<const Program *, int>> partial_result[3];
-  for (int i = 0; i < 2; i++) {
+  for (int i = 0; i <= 2; i++) {
     partial_result[i] =
         solveI(delay, remaining_time, i, cur_solver, queues, visited);
+    std::cerr << "Solved for user " << i << std::endl;
   }
 
-  return bestPartial(partial_result, delay);
+  return bestPartial(cur_solver, partial_result, delay);
 }
 
 std::vector<const Program *>
