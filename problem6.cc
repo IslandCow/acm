@@ -77,39 +77,36 @@ solveInternal(int delay, int remaining_time, int cur_solver,
   return best_answer;
 }
 
+std::vector<const Program*> sortForUser(int user, const std::vector<const Program *> &programs){
+  std::vector<const Program*> sorted(programs.begin(), programs.end());
+  std::sort(sorted.begin(), sorted.end(), [user](const Program *a, const Program *b)
+    {
+      return a->scores[user] < b->scores[user];
+    });
+    return sorted;
+}
+
 Result solve(int delay, int total_time,
              const std::vector<const Program *> &programs) {
-  int solver = 0; // 0, 1, or 2
   int most_problems = 0;
   int best_score = INT_MAX;
   std::vector<std::pair<const Program *, int>> best_answer;
-  for (const auto *p : programs) {
-    std::vector<const Program *> refs(programs.begin(), programs.end());
-    auto iter = std::find(refs.begin(), refs.end(), p);
-    refs.erase(iter);
-    for (int solver : {0, 1, 2}) {
-      int time = p->scores[solver];
-      if (time > total_time) {
-        continue;
-      }
-      int remaining_time = total_time - time;
-      auto answer = solveInternal(delay, remaining_time, solver, refs);
-      answer.insert(answer.begin(), {p, solver});
-      if (answer.size() >= most_problems) {
-        if (answer.size() > most_problems) {
-          best_score = INT_MAX;
-        }
-        int sc = score(answer, delay);
-        if (sc < best_score) {
-          std::cerr << "New best!" << std::endl;
-          most_problems = answer.size();
-          best_score = sc;
-          best_answer = answer;
-        }
-      }
+
+  std::vector<const Program*> sorted_times[] = {sortForUser(0, programs),sortForUser(1,programs), sortForUser(2,programs)};
+
+  int solver = 0;
+  int min_time = INT_MAX;
+  const Program* first = nullptr;
+  for (int i=0; i<2; i++) {
+    const Program* front = *(sorted_times[i].begin());
+    int time = front->scores[i];
+    if (time < min_time) {
+      min_time = time;
+      solver = i;
+      first = front;
     }
   }
-
+  
   std::cerr << "SOLUTION!" << std::endl;
 
   Result r;
