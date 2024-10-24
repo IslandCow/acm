@@ -1,6 +1,7 @@
 #include <algorithm>
 #include <iostream>
 #include <limits.h>
+#include <set>
 #include <utility>
 #include <vector>
 
@@ -12,6 +13,25 @@ struct Program {
 struct Result {
   int problems;
   int score;
+};
+
+struct TimeQueue {
+  const std::vector<const Program *>::iterator begin;
+  const std::vector<const Program *>::iterator end;
+
+  std::vector<const Program *>::iterator cur;
+
+  std::vector<const Program *>::iterator next(const std::set<int> &solved) {
+    while (cur != end) {
+      cur++;
+      auto iter = solved.find((*cur)->index);
+      if (iter == solved.end()) {
+        break;
+      }
+    }
+
+    return cur;
+  }
 };
 
 int score(const std::vector<std::pair<const Program *, int>> &solution,
@@ -41,72 +61,94 @@ int score(const std::vector<std::pair<const Program *, int>> &solution,
 
 std::vector<std::pair<const Program *, int>>
 solveInternal(int delay, int remaining_time, int cur_solver,
-              std::vector<const Program *> programs) {
-  std::cerr << "Remaining time: " << remaining_time << std::endl;
-  int most_problems = 0;
-  int best_score = INT_MAX;
-  std::vector<std::pair<const Program *, int>> best_answer;
-  for (const auto *p : programs) {
-    std::vector<const Program *> refs(programs.begin(), programs.end());
-    auto iter = std::find(refs.begin(), refs.end(), p);
-    refs.erase(iter);
-    for (int solver : {0, 1, 2}) {
-      int time = p->scores[solver];
-      if (solver != cur_solver) {
-        time += delay;
-      }
-      if (time > remaining_time) {
-        continue;
-      }
-      auto answer = solveInternal(delay, remaining_time - time, solver, refs);
-      answer.insert(answer.begin(), {p, solver});
-      if (answer.size() >= most_problems) {
-        if (answer.size() > most_problems) {
-          best_score = INT_MAX;
-        }
-        int sc = score(answer, delay);
-        if (sc < best_score) {
-          std::cerr << "New local best!" << std::endl;
-          most_problems = answer.size();
-          best_score = sc;
-          best_answer = answer;
-        }
-      }
-    }
-  }
-  return best_answer;
-}
-
-std::vector<const Program*> sortForUser(int user, const std::vector<const Program *> &programs){
-  std::vector<const Program*> sorted(programs.begin(), programs.end());
-  std::sort(sorted.begin(), sorted.end(), [user](const Program *a, const Program *b)
-    {
-      return a->scores[user] < b->scores[user];
-    });
-    return sorted;
-}
-
-Result solve(int delay, int total_time,
-             const std::vector<const Program *> &programs) {
-  int most_problems = 0;
-  int best_score = INT_MAX;
-  std::vector<std::pair<const Program *, int>> best_answer;
-
-  std::vector<const Program*> sorted_times[] = {sortForUser(0, programs),sortForUser(1,programs), sortForUser(2,programs)};
-
+              TimeQueue *queues[3], std::set<int> &visited) {
   int solver = 0;
   int min_time = INT_MAX;
-  const Program* first = nullptr;
-  for (int i=0; i<2; i++) {
-    const Program* front = *(sorted_times[i].begin());
+  const Program *first = nullptr;
+  for (int i = 0; i < 2; i++) {
+    const Program *front = *(queues[i]->cur);
     int time = front->scores[i];
+    if (i != cur_solver) {
+      time += delay;
+    }
     if (time < min_time) {
       min_time = time;
       solver = i;
       first = front;
     }
   }
-  
+  visited.insert(first->index);
+  auto iter = queues[solver]->next(visited);
+
+  std::vector<std::pair<const Program *, int>> partial_result = {
+      {first, solver}};
+  if (iter == queues[solver]->end) {
+    return partial_result;
+  }
+
+  auto solution =
+      solveInternal(delay, remaining_time - min_time, solver, queues, visited);
+  partial_result.insert(partial_result.end(), solution.begin(), solution.end());
+  return partial_result;
+}
+
+std::vector<const Program *>
+sortForUser(int user, const std::vector<const Program *> &programs) {
+  std::vector<const Program *> sorted(programs.begin(), programs.end());
+  std::sort(sorted.begin(), sorted.end(),
+            [user](const Program *a, const Program *b) {
+              return a->scores[user] < b->scores[user];
+            });
+  return sorted;
+}
+
+Result solve(int delay, int total_time,
+             const std::vector<const Program *> &programs) {
+  std::vector<const Program *> sorted_times[3] = {sortForUser(0, programs),
+                                                  sortForUser(1, programs),
+                                                  sortForUser(2, programs)};
+
+  std::vector<std::pair<const Program *, int>> answers[3];
+  for (int i = 0; i <= 2; i++) {
+    TimeQueue queues[3] = {{.begin = sorted_times[0].begin(),
+                            .end = sorted_times[0].end(),
+                            .cur = sorted_times[0].begin()},
+                           {.begin = sorted_times[1].begin(),
+                            .end = sorted_times[1].end(),
+                            .cur = sorted_times[1].begin()},
+                           {.begin = sorted_times[2].begin(),
+                            .end = sorted_times[2].end(),
+                            .cur = sorted_times[2].begin()}};
+
+    std::set<int> visited;
+    TimeQueue &cur_queue = queues[i];
+    const Program *first = *(cur_queue.cur);
+    int remaining_time = total_time - first->scores[i];
+    visited.insert(first->index);
+    cur_queue.next(visited);
+    answers[i].push_back({first, i});
+    TimeQueue *ptr_queues[3] = {&queues[0], &queues[1], &queues[2]};
+    auto partial = solveInternal(delay, remaining_time, i, ptr_queues, visited);
+    answers[i].insert(answers[i].end(), partial.begin(), partial.end());
+  }
+
+  int most_problems = 0;
+  int best_score = INT_MAX;
+  std::vector<std::pair<const Program *, int>> best_answer;
+  for (int i = 0; i <= 2; i++) {
+    if (answers[i].size() >= most_problems) {
+      if (answers[i].size() > most_problems) {
+        best_score = INT_MAX;
+      }
+      int val = score(answers[i], delay);
+      if (val < best_score) {
+        best_score = val;
+        best_answer = answers[i];
+        most_problems = answers[i].size();
+      }
+    }
+  }
+
   std::cerr << "SOLUTION!" << std::endl;
 
   Result r;
