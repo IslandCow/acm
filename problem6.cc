@@ -70,8 +70,8 @@ solveInternal(int delay, int remaining_time, int cur_solver,
   for (int i = 0; i < 2; i++) {
     const Program *front = *(queues[i]->cur);
     if (visited.find(front->index) != visited.end()) {
-	    front = *(queues[i]->next(visited));
-    } 
+      front = *(queues[i]->next(visited));
+    }
 
     int time = front->scores[i];
     if (i != cur_solver) {
@@ -84,7 +84,7 @@ solveInternal(int delay, int remaining_time, int cur_solver,
     }
   }
   if (remaining_time - min_time < 0) {
-	  return {};
+    return {};
   }
   visited.insert(first->index);
   auto iter = queues[solver]->next(visited);
