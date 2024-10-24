@@ -26,7 +26,7 @@ struct TimeQueue {
       std::cerr << "Advance queue to remove: " << (*cur)->index << std::endl;
       cur++;
       if (cur == end) {
-	      break;
+        break;
       }
       auto iter = solved.find((*cur)->index);
       if (iter == solved.end()) {
@@ -87,7 +87,7 @@ solveI(int delay, int remaining_time, int i, int cur_solver,
     front = *(cur);
   }
   std::cerr << "Processing program: " << front->index << " for user " << i
-    << std::endl;
+            << std::endl;
 
   int time = front->scores[i];
   if (i != cur_solver) {
@@ -97,7 +97,8 @@ solveI(int delay, int remaining_time, int i, int cur_solver,
 
   if (remaining_time - time < 0) {
     std::cerr << "Cannot be solved in time" << std::endl;
-    std::cerr << "Time: " << time << " Remaining: " << remaining_time << std::endl;
+    std::cerr << "Time: " << time << " Remaining: " << remaining_time
+              << std::endl;
     return {};
   }
 
@@ -119,7 +120,8 @@ solveI(int delay, int remaining_time, int i, int cur_solver,
 }
 
 std::vector<std::pair<const Program *, int>>
-bestPartial(int cur_solver, std::vector<std::pair<const Program *, int>> results[3],
+bestPartial(int cur_solver,
+            std::vector<std::pair<const Program *, int>> results[3],
             int delay) {
   int min_score = INT_MAX;
   int most_problems = 0;
@@ -140,6 +142,8 @@ bestPartial(int cur_solver, std::vector<std::pair<const Program *, int>> results
       }
     }
   }
+  std::cerr << "Partial best: Problems: " << most_problems
+            << " Score: " << min_score << std::endl;
   return results[best];
 }
 
@@ -159,7 +163,8 @@ solveInternal(int delay, int remaining_time, int cur_solver,
   std::cerr << "]" << std::endl;
   std::vector<std::pair<const Program *, int>> partial_result[3];
   for (int i = 0; i <= 2; i++) {
-    std::cerr << "Iteration: " << level << " Solving for user " << i << std::endl;
+    std::cerr << "Iteration: " << level << " Solving for user " << i
+              << std::endl;
     partial_result[i] =
         solveI(delay, remaining_time, i, cur_solver, queues, visited);
   }
