@@ -69,6 +69,10 @@ solveInternal(int delay, int remaining_time, int cur_solver,
   const Program *first = nullptr;
   for (int i = 0; i < 2; i++) {
     const Program *front = *(queues[i]->cur);
+    if (visited.find(front->index) != visited.end()) {
+	    front = *(queues[i]->next(visited));
+    } 
+
     int time = front->scores[i];
     if (i != cur_solver) {
       time += delay;
@@ -79,12 +83,15 @@ solveInternal(int delay, int remaining_time, int cur_solver,
       first = front;
     }
   }
+  if (remaining_time - min_time < 0) {
+	  return {};
+  }
   visited.insert(first->index);
   auto iter = queues[solver]->next(visited);
 
   std::vector<std::pair<const Program *, int>> partial_result = {
       {first, solver}};
-  if (iter == queues[solver]->end || (remaining_time - min_time) <= 0) {
+  if (iter == queues[solver]->end) {
     return partial_result;
   }
 
